@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>جدول مراقبة الحفظ اليومي</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr@4.6.13/dist/l10n/ar.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
+    :root {
+      --bg: linear-gradient(to bottom, #f8f9fc, #e9ecef);
+      --text: #2c3e50;
+      --container-bg: white;
+      --header-bg: #4a90e2;
+      --th-bg: #4a90e2;
+      --even-row: #f8f9fa;
+      --border: #dfe6e9;
+      --date-bg: rgba(74, 144, 226, 0.08);
+    }
+
+    body.dark {
+      --bg: #121212;
+      --text: #e0e0e0;
+      --container-bg: #1e1e1e;
+      --header-bg: #1a3c63;
+      --th-bg: #1a3c63;
+      --even-row: #252525;
+      --border: #444;
+      --date-bg: rgba(74, 144, 226, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Tajawal', sans-serif;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .container { width: 100%; background: var(--container-bg); display: flex; flex-direction: column; min-height: 100vh; }
+    header { background: var(--header-bg); color: white; padding: 14px; text-align: center; font-size: 1.3rem; font-weight: 700; flex-shrink: 0; }
+    
+    .content { 
+      flex: 1; 
+      padding: 10px; 
+      overflow-y: auto; 
+      overflow-x: hidden; 
+      padding-bottom: 110px; 
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* === الـ Wrapper الجديد للتمرير الأفقي === */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 16px 0 20px 0;
+      scrollbar-width: thin;
+      scrollbar-color: #4a90e2 #f1f1f1;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+      height: 7px;
+    }
+    .table-wrapper::-webkit-scrollbar-thumb {
+      background: #4a90e2;
+      border-radius: 10px;
+    }
+    .table-wrapper::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    table#scheduleTable { 
+      width: auto !important; 
+      min-width: 100%; 
+      margin: 0 !important; 
+      border-collapse: collapse; 
+      font-size: 0.93rem; 
+      line-height: 1.38; 
+      table-layout: auto; 
+    }
+
+    th, td { border: 1px solid var(--border); padding: 9px 6px; text-align: center; vertical-align: middle; user-select: text; }
+    td[contenteditable="true"] { 
+      cursor: text; 
+      background: white; 
+      min-height: 42px; 
+      font-family: 'Tajawal', sans-serif; 
+      direction: ltr; 
+      text-align: center; 
+      min-width: 62px; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      max-width: 110px; 
+    }
+    body.dark td[contenteditable="true"] { background: #222; }
+
+    td.num-cell.done { background: #e8f5e9 !important; color: #2e7d32; }
+    td.num-cell.not-done { background: #ffebee !important; color: #c62828; }
+    td.num-cell { font-size: clamp(0.95rem, 3.2vw, 1.08rem); font-weight: 500; letter-spacing: 0.4px; }
+
+    th { background: var(--th-bg); color: white; font-weight: 600; font-size: 0.96rem; padding: 8px 6px; white-space: nowrap; min-width: 62px; }
+    tr:nth-child(even) { background: var(--even-row); }
+
+    .datetime-cell { cursor: pointer; background: var(--date-bg); white-space: normal; word-break: break-word; min-width: 140px; padding: 9px 8px; max-height: 60px; overflow: hidden; text-overflow: ellipsis; }
+    .date-part { font-weight: 600; font-size: 1.05rem; }
+    .note-part { font-size: 0.84rem; color: var(--text); opacity: 0.85; display: block; margin-top: 4px; }
+
+    #scheduleTable th:first-child, #scheduleTable td:first-child { min-width: 140px; }
+
+    .editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 10000; }
+    .editor-box { background: var(--container-bg); width: 92%; max-width: 520px; border-radius: 16px; padding: 28px 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); color: var(--text); }
+    .editor-box h3 { margin: 0 0 20px; text-align: center; font-size: 1.3rem; font-weight: 600; }
+    .editor-box input[type="text"], .editor-box textarea { width: 100%; padding: 12px 14px; margin-bottom: 18px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; background: var(--container-bg); color: var(--text); font-family: inherit; }
+    .editor-box input:focus, .editor-box textarea:focus { border-color: #4a90e2; outline: none; }
+    .editor-box textarea { height: 160px; resize: vertical; }
+
+    .editor-buttons { display: flex; justify-content: center; gap: 20px; }
+    .btn-save, .btn-cancel { padding: 12px 32px; border: none; border-radius: 50px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-save { background: #4caf50; color: white; }
+    .btn-save:hover { background: #43a047; transform: translateY(-1px); }
+    .btn-cancel { background: #ef5350; color: white; }
+    .btn-cancel:hover { background: #e53935; transform: translateY(-1px); }
+
+    .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin: 18px 0; padding: 0 8px; }
+    .control-btn { color: white; border: none; padding: 11px 22px; font-size: 0.97rem; border-radius: 50px; cursor: pointer; min-width: 150px; }
+    .add-btn { background: #27ae60; }
+    .clear-btn { background: #e74c3c; }
+    .save-btn { background: #2c3e50; flex: 1 1 100%; max-width: 300px; }
+
+    .bottom-nav {
+      position: fixed;
+      inset: auto 0 0 0;
+      width: 100%;
+      max-width: 100vw;
+      height: 72px;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #000;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 9998;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.4);
+      box-sizing: border-box;
+    }
+
+    .bottom-nav-item { display: flex; flex-direction: column; align-items: center; color: #aaa; font-size: 0.75rem; cursor: pointer; }
+    .bottom-nav-item.active, .bottom-nav-item:hover { color: #d4a017; }
+    .bottom-nav-item svg { width: 26px; height: 26px; margin-bottom: 3px; stroke: currentColor; fill: none; stroke-width: 2; }
+  </style>
+</head>
+<body>
+
+  <div id="editorOverlay" class="editor-overlay">
+    <div class="editor-box">
+      <h3>تعديل التاريخ والملاحظات</h3>
+      <input type="text" id="dateInput" placeholder="اختر التاريخ" readonly>
+      <textarea id="noteInput" placeholder="اكتب ملاحظاتك هنا..."></textarea>
+      <div class="editor-buttons">
+        <button class="btn-save" id="saveEdit">حفظ</button>
+        <button class="btn-cancel" id="cancelEdit">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>جدول مراقبة الحفظ اليومي</header>
+    <div class="content">
+      
+      <!-- الـ Wrapper الجديد للتمرير الأفقي -->
+      <div class="table-wrapper">
+        <table id="scheduleTable">
+          <thead>
+            <tr>
+              <th rowspan="3">التاريخ والملاحظات</th>
+              <th colspan="3">المقرر الأول</th>
+              <th colspan="3">المقرر الثاني</th>
+              <th colspan="3">المقرر الثالث</th>
+              <th colspan="3">الحفظ</th>
+              <th colspan="3">الورد اليومي</th>
+            </tr>
+            <tr>
+              <th>من</th><th>إلى</th><th>تم</th>
+              <th>من</th><th>إلى</th><th>تم</th>
+              <th>من</th><th>إلى</th><th>تم</th>
+              <th>من</th><th>إلى</th><th>تم</th>
+              <th>من</th><th>إلى</th><th>تم</th>
+            </tr>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="controls">
+        <button class="control-btn add-btn" id="addRowBtn">+ إضافة يوم جديد</button>
+        <button class="control-btn clear-btn" id="clearAllBtn">مسح كل السجلات</button>
+        <button class="control-btn save-btn" id="saveBtn">حفظ الجدول</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-item"><span>الجدول</span></div>
+    <div class="bottom-nav-item"><span>الطلبة</span></div>
+    <div class="bottom-nav-item"><span>البحث</span></div>
+    <div class="bottom-nav-item" id="theme-toggle">
+      <svg id="theme-icon" viewBox="0 0 24 24"></svg>
+      <span id="theme-label">ليلي</span>
+    </div>
+    <div class="bottom-nav-item active"><span>الرئيسية</span></div>
+  </nav>
+
+  <script>
+    // باقي الـ JavaScript كما هو بدون أي تغيير
+    const tableBody = document.querySelector("#scheduleTable tbody");
+    const addRowBtn = document.getElementById("addRowBtn");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const editorOverlay = document.getElementById("editorOverlay");
+    const dateInput = document.getElementById("dateInput");
+    const noteInput = document.getElementById("noteInput");
+    const saveEdit = document.getElementById("saveEdit");
+    const cancelEdit = document.getElementById("cancelEdit");
+
+    const themeToggle = document.getElementById("theme-toggle");
+    const themeIcon = document.getElementById("theme-icon");
+    const themeLabel = document.getElementById("theme-label");
+
+    const STORAGE_KEY = "dailyMemorizationTable_v3";
+
+    let currentRowIndex = null;
+    let currentFlatpickr = null;
+    let isLongPress = false;
+
+    // Theme
+    if (localStorage.getItem("theme") === "dark") document.body.classList.add("dark");
+
+    function updateThemeIcon() {
+      const isDark = document.body.classList.contains("dark");
+      themeIcon.innerHTML = isDark
+        ? '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'
+        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+      themeLabel.textContent = isDark ? "نهاري" : "ليلي";
+    }
+
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+      updateThemeIcon();
+    });
+    updateThemeIcon();
+
+    function openEditor(rowIndex, date = "", note = "") {
+      currentRowIndex = rowIndex;
+      dateInput.value = date;
+      noteInput.value = note;
+
+      if (currentFlatpickr) currentFlatpickr.destroy();
+
+      currentFlatpickr = flatpickr(dateInput, {
+        dateFormat: "Y-m-d",
+        locale: "ar",
+        defaultDate: date || null,
+        onChange: function(selectedDates, dateStr) {
+          dateInput.value = dateStr;
+          currentFlatpickr.close();
+        }
+      });
+
+      editorOverlay.style.display = "flex";
+    }
+
+    saveEdit.addEventListener("click", () => {
+      if (currentRowIndex === null) return;
+
+      const rows = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (rows[currentRowIndex]) {
+        rows[currentRowIndex][0] = dateInput.value.trim();
+        rows[currentRowIndex][1] = noteInput.value.trim();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+      }
+
+      const cell = tableBody.rows[currentRowIndex].cells[0];
+      const dateText = dateInput.value ? `<span class="date-part">${dateInput.value}</span>` : "";
+
+      let noteText = noteInput.value.trim();
+      let previewText = "";
+      if (noteText) {
+        const words = noteText.split(/\s+/).filter(w => w.trim());
+        previewText = words.slice(0, 2).join(" ");
+        if (words.length > 2) previewText += "...";
+      }
+
+      cell.innerHTML = dateText + (previewText ? `<span class="note-part">${previewText}</span>` : "") || "اضغط للتعديل";
+
+      cell.dataset.date = dateInput.value.trim();
+      cell.dataset.note = noteInput.value.trim();
+
+      cell.classList.toggle("empty", !dateInput.value && !noteInput.value);
+
+      editorOverlay.style.display = "none";
+      currentRowIndex = null;
+      if (currentFlatpickr) currentFlatpickr.destroy();
+      currentFlatpickr = null;
+
+      updateDoneCells();
+      saveToLocalStorage();
+    });
+
+    cancelEdit.addEventListener("click", () => {
+      noteInput.focus();
+    });
+
+    function updateDoneCells() {
+      document.querySelectorAll('td.num-cell').forEach(td => {
+        const idx = Array.from(td.parentNode.children).indexOf(td);
+        if (![3,6,9,12,15].includes(idx)) {
+          td.classList.remove("done", "not-done");
+          return;
+        }
+        const txt = (td.textContent || "").trim();
+        td.classList.remove("done", "not-done");
+        if (txt === "تم") td.classList.add("done");
+        else if (txt !== "") td.classList.add("not-done");
+      });
+    }
+
+    function saveToLocalStorage() {
+      const rows = [];
+      tableBody.querySelectorAll("tr").forEach(row => {
+        const cells = row.querySelectorAll("td");
+        if (cells.length < 16) return;
+        const dtCell = cells[0];
+        rows.push([
+          dtCell.dataset.date || "",
+          dtCell.dataset.note || "",
+          ...Array.from(cells).slice(1).map(c => c.textContent.trim())
+        ]);
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      const rows = JSON.parse(saved);
+      tableBody.innerHTML = "";
+      rows.forEach(data => {
+        while (data.length < 17) data.push("");
+        addRow(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11],data[12],data[13], data[14],data[15],data[16]);
+      });
+      updateDoneCells();
+      attachLongPress();   
+    }
+
+    function attachLongPressToRow(row) {
+      let timer;
+
+      const start = (e) => {
+        isLongPress = false;
+        timer = setTimeout(() => {
+          isLongPress = true;
+          if (confirm("هل تريد حذف هذا الصف؟")) {
+            row.remove();
+            saveToLocalStorage();
+          }
+        }, 700);
+      };
+
+      const endOrCancel = () => {
+        clearTimeout(timer);
+        setTimeout(() => { isLongPress = false; }, 100);
+      };
+
+      row.addEventListener("touchstart", start, { passive: false });
+      row.addEventListener("touchend", endOrCancel);
+      row.addEventListener("touchcancel", endOrCancel);
+      row.addEventListener("touchmove", endOrCancel);
+      row.addEventListener("mousedown", start);
+      row.addEventListener("mouseup", endOrCancel);
+      row.addEventListener("mouseleave", endOrCancel);
+    }
+
+    function attachLongPress() {
+      tableBody.querySelectorAll("tr").forEach(row => attachLongPressToRow(row));
+    }
+
+    function addRow(date = "", note = "", m1f="", m1t="", m1d="", m2f="", m2t="", m2d="", m3f="", m3t="", m3d="", hf="", ht="", hd="", wf="", wt="", wd="") {
+      const row = document.createElement("tr");
+
+      let previewText = "";
+      if (note.trim()) {
+        const words = note.trim().split(/\s+/).filter(w => w);
+        previewText = words.slice(0, 2).join(" ");
+        if (words.length > 2) previewText += "...";
+      }
+
+      const displayText = (date ? `<span class="date-part">${date}</span>` : "") +
+                         (previewText ? `<span class="note-part">${previewText}</span>` : "") ||
+                         "اضغط للتعديل";
+
+      row.innerHTML = `
+        <td class="datetime-cell ${(!date && !note) ? 'empty' : ''}"
+            data-date="${date.replace(/"/g, '&quot;')}"
+            data-note="${(note || '').replace(/"/g, '&quot;')}">
+          ${displayText}
+        </td>
+        <td contenteditable="true" class="num-cell">${m1f}</td>
+        <td contenteditable="true" class="num-cell">${m1t}</td>
+        <td contenteditable="true" class="num-cell">${m1d}</td>
+        <td contenteditable="true" class="num-cell">${m2f}</td>
+        <td contenteditable="true" class="num-cell">${m2t}</td>
+        <td contenteditable="true" class="num-cell">${m2d}</td>
+        <td contenteditable="true" class="num-cell">${m3f}</td>
+        <td contenteditable="true" class="num-cell">${m3t}</td>
+        <td contenteditable="true" class="num-cell">${m3d}</td>
+        <td contenteditable="true" class="num-cell">${hf}</td>
+        <td contenteditable="true" class="num-cell">${ht}</td>
+        <td contenteditable="true" class="num-cell">${hd}</td>
+        <td contenteditable="true" class="num-cell">${wf}</td>
+        <td contenteditable="true" class="num-cell">${wt}</td>
+        <td contenteditable="true" class="num-cell">${wd}</td>
+      `;
+
+      tableBody.appendChild(row);
+
+      row.cells[0].addEventListener("click", () => {
+        if (!isLongPress) {
+          const cell = row.cells[0];
+          openEditor(Array.from(tableBody.rows).indexOf(row), cell.dataset.date || "", cell.dataset.note || "");
+        }
+      });
+
+      attachLongPressToRow(row);
+
+      row.querySelectorAll('td[contenteditable="true"]').forEach(td => {
+        td.addEventListener("input", function() {
+          if (this.textContent.length > 4) {
+            this.textContent = this.textContent.substring(0, 4);
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(this);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+          updateDoneCells();
+          saveToLocalStorage();
+        });
+      });
+
+      updateDoneCells();
+    }
+
+    addRowBtn.addEventListener("click", () => {
+      addRow("", "", "","","", "","","", "","","", "","","", "","","");
+      saveToLocalStorage();
+    });
+
+    clearAllBtn.addEventListener("click", () => {
+      if (confirm("متأكد من حذف كل السجلات؟")) {
+        tableBody.innerHTML = "";
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    });
+
+    saveBtn.addEventListener("click", () => {
+      saveToLocalStorage();
+      alert("تم حفظ الجدول بنجاح ✓");
+    });
+
+    window.addEventListener("load", () => {
+      loadFromLocalStorage();
+    });
+  </script>
+</body>
+</html>
